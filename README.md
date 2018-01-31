@@ -1,4 +1,3 @@
-# 这是一个koa2项目模板，打算摸索一套适合自己的koa2后端项目工程脚手架
 # 1. mongoose
 
  - 数据库操作自然是重中之重
@@ -302,5 +301,92 @@ router.post('/',async function(ctx,next){
 其实上面这一坨应该写在真正的service层中，偷懒的话就直接写在router/controller里就行了。而这篇文章前面的service层，实际上是model层，这个工程没有service层
 
 # 5.错误处理
-#6. middleware剥离
+koa2中错误不需要特殊处理，得益于promise和es7,在需要抛出错误的地方通过try-catch和throw就可以。
+```
+ ctx.throw(400,'bad request')
+```
+注意，这里只能抛出内置错误，koa使用http-error，支持的错误列表：
+```
+400	BadRequest
+401	Unauthorized
+402	PaymentRequired
+403	Forbidden
+404	NotFound
+405	MethodNotAllowed
+406	NotAcceptable
+407	ProxyAuthenticationRequired
+408	RequestTimeout
+409	Conflict
+410	Gone
+411	LengthRequired
+412	PreconditionFailed
+413	PayloadTooLarge
+414	URITooLong
+415	UnsupportedMediaType
+416	RangeNotSatisfiable
+417	ExpectationFailed
+418	ImATeapot
+421	MisdirectedRequest
+422	UnprocessableEntity
+423	Locked
+424	FailedDependency
+425	UnorderedCollection
+426	UpgradeRequired
+428	PreconditionRequired
+429	TooManyRequests
+431	RequestHeaderFieldsTooLarge
+451	UnavailableForLegalReasons
+500	InternalServerError
+501	NotImplemented
+502	BadGateway
+503	ServiceUnavailable
+504	GatewayTimeout
+505	HTTPVersionNotSupported
+506	VariantAlsoNegotiates
+507	InsufficientStorage
+508	LoopDetected
+509	BandwidthLimitExceeded
+510	NotExtended
+511	NetworkAuthenticationRequired
+```
+用户自定的错误类型通过设定response.body设定即可
+# 6.middleware剥离
+现在的app.js过于臃肿，将所有的中间件进行剥离是一个好主意：
+![middlewares](http://upload-images.jianshu.io/upload_images/1431816-cf9547a660365cd3.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+```
+const bodyParser = require('koa-bodyparser')
+const router = require('../routers')
+//数据库
+const mongoose = require('mongoose')
+const dbConn = () => {
+    //连接数据库
+    mongoose.connect('mongodb://localhost/mongo-test')
+    const db = mongoose.connection
+    db.on('error', console.error.bind(console, 'connection error:'));
+    db.once('open', function () {
+        console.log('db connected')
+    })
+}
+//服务
+const service = require('../services')
+ 
+const errorHandler = require('./error-handler')
+
+module.exports = (app) => { 
+    app.use(bodyParser())
+    app.use(router.routes())
+    dbConn()
+    service(app)
+}
+```
+现在的app.js就可以简化为：
+```
+const Koa = require('koa')
+const app = new Koa()
+const middleware = require('./middleware') 
+const config =require('./config')
+middleware(app) 
+app.listen(config.port || 3000, function () { console.log(`server starting at ${config.port}`) })
+```
+以后所有的中间件都加在middlew文件夹下
 
