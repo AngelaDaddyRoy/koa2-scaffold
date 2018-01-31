@@ -1,5 +1,6 @@
 const Koa = require('koa')
 const app = new Koa()
 const middleware = require('./middleware') 
+const config =require('./config')
 middleware(app) 
-app.listen(3000, function () { console.log('server starting at 3000') })
+app.listen(config.port || 3000, function () { console.log(`server starting at ${config.port}`) })
