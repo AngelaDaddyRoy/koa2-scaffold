@@ -398,3 +398,12 @@ app.listen(config.port || 3000, function () { console.log(`server starting at ${
 ```
 以后所有的中间件都加在middleware文件夹下
 
+当前项目结构：
+![image.png](http://upload-images.jianshu.io/upload_images/1431816-f8e8ead6c3767112.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+截至目前github地址:
+```
+git clone "https://github.com/AngelaDaddyRoy/koa2-scaffold.git"
+git checkout "basic-strcture"
+```
+
