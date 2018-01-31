@@ -149,14 +149,23 @@ app.use(router.routes())
 app.listen(3000, function () { console.log('server starting at 3000') })  
 ```
 
-# 3. service分层
-- 实际中不可能把service都写在controller（这里是路由）中
-使用mongoose时，service的分离还是比较简单的：
-![目前的结构，两个router，两个service](http://upload-images.jianshu.io/upload_images/1431816-1a403cc16f453c1a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+# 3. repository分层
+- 这里的repository是借鉴*spring boot*的写法，指的是和model密切相关的数据库操作类集合方法。正规的springboot项目可能会分3层：
+```
+ ---- controller layer- 路由控制
+ ---- repository layer- 数据库简易操作层接口
+ ---- service layer- 数据库复杂操作层
+```
+以上是我大致的理解，可能有别的叫法。但大致就这样。
+
+这里，我把数据库模型定义和简单操作都放在了repository层中。我觉得差不多够了。因为mongoose提供了很好的模型静态方法和实例方法定义，service层显得没那么必要了，实际上本项目的service是一些和数据库模型无关的操作层，如jwt层，后述
+  下面开始：
+- 实际中不可能把service都写在controller（这里是路由）中，使用mongoose时，repository的分离还是比较简单的：
+![目前的结构，两个子路由，两个repository](http://upload-images.jianshu.io/upload_images/1431816-54b0762ce7f14687.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 blog路由和user路由大同小异：
 ```
-const Blog  = require('../services').Blog
+const Blog  = require('../repository').Blog
 const router  = require('koa-router')()
 router.get('/',async function(ctx){
     const blogs = await Blog.find()
@@ -173,11 +182,11 @@ router.post('/',async function(ctx,next){
 })
 module.exports = router
 ```
-总路由表中添加blog路由：
+总路由表中添加子路由：
 ```
 const router  = require('koa-router')()
-const userRouter = require('./user')
-const blogRouter = require('./blog')
+const userRouter = require('./subRouters/user')
+const blogRouter = require('./subRouters/blog')
 router.prefix('/api')
 
 router.use('/users',userRouter.routes(),userRouter.allowedMethods())
@@ -185,10 +194,10 @@ router.use('/blogs',blogRouter.routes(),blogRouter.allowedMethods())
 
 module.exports = router
 ```
-### 服务分层
-从blog路由中可以看到`const Blog  = require('../services').Blog`使用了blog服务层
+### repository分层
+从blog路由中可以看到`const Blog  = require('../repository').Blog`使用了blog服务层
 ```
-//services\models\blog.js
+//repository\models\blog.js
 //简单的定义Model并导出
 const mongoose = require('mongoose')
 const blogSchema = new mongoose.Schema({
@@ -240,37 +249,37 @@ db.once('open', function () {
 ```
 
 # 更进一步：
-以上的写法中，router中还是要分别引用service：
+以上的写法中，router中还是要分别引用repository：
 ```
-const Blog  = require('../services').Blog
-const User  = require('../services').User
+const Blog  = require('../repository').Blog
+const User  = require('../repository').User
 ...
 ```
-随着工程变大，这样的引用将马上变成噩梦。
+随着工程变大，这样的引用变得很麻烦。
 可以利用koa的context，将服务挂载到其上，为所有组件使用：
-首先修改`根`服务`services\index.js`
+首先修改`根`服务`repository\index.js`
 ```
 const User = require('./models/user')
-const Blog = require('./models/blog')
-const service = {
+const Blog = require('./models/blog') 
+const repositories = {
     User: User,
-    Blog: Blog
+    Blog: Blog 
 }
 module.exports = function (app) {
-    app.context.service = service
+    app.context.repo = repositories
 }
 ```
 module.exports导出一个方法，该方法传入app，在方法内部，将所有的service都挂在了context上
 
 然后略加修改app.js,添加：
 ```
-const service = require('./services')
+const service = require('./repository')
 service(app)
 ```
 其它地方的使用：
 ```
 router.get('/',async function(ctx){
-    const blogs = await ctx.service.Blog.find()
+    const blogs = await ctx.repo.Blog.find()
     ctx.body = blogs
 })
 ```
@@ -350,6 +359,7 @@ koa2中错误不需要特殊处理，得益于promise和es7,在需要抛出错�
 511	NetworkAuthenticationRequired
 ```
 用户自定的错误类型通过设定response.body设定即可
+
 # 6.middleware剥离
 现在的app.js过于臃肿，将所有的中间件进行剥离是一个好主意：
 ![middlewares](http://upload-images.jianshu.io/upload_images/1431816-cf9547a660365cd3.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
@@ -368,15 +378,13 @@ const dbConn = () => {
     })
 }
 //服务
-const service = require('../services')
- 
-const errorHandler = require('./error-handler')
+const repository = require('../repository') 
 
 module.exports = (app) => { 
     app.use(bodyParser())
     app.use(router.routes())
     dbConn()
-    service(app)
+    repository(app)
 }
 ```
 现在的app.js就可以简化为：
@@ -388,5 +396,5 @@ const config =require('./config')
 middleware(app) 
 app.listen(config.port || 3000, function () { console.log(`server starting at ${config.port}`) })
 ```
-以后所有的中间件都加在middlew文件夹下
+以后所有的中间件都加在middleware文件夹下
 

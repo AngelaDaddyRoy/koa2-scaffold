@@ -1,6 +1,6 @@
 const router  = require('koa-router')()
-const userRouter = require('./user')
-const blogRouter = require('./blog')
+const userRouter = require('./subRouters/user')
+const blogRouter = require('./subRouters/blog')
 router.prefix('/api')
 
 router.use('/users',userRouter.routes(),userRouter.allowedMethods())

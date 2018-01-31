@@ -2,7 +2,7 @@
  * @Author: AngelaDaddy 
  * @Date: 2018-01-31 00:32:00 
  * @Last Modified by: monodev
- * @Last Modified time: 2018-01-31 09:48:18
+ * @Last Modified time: 2018-01-31 11:31:02
  * @Description: 中间件集合
  */
 
@@ -20,14 +20,11 @@ const dbConn = () => {
     })
 }
 //服务
-const service = require('../services')
- 
-const errorHandler = require('./error-handler')
+const repository = require('../repository') 
 
-module.exports = (app) => {
-    //app.use(errorHandler())
+module.exports = (app) => { 
     app.use(bodyParser())
     app.use(router.routes())
     dbConn()
-    service(app)
+    repository(app)
 }
